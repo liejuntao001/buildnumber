@@ -16,13 +16,16 @@ import (
 )
 
 var folder string
-var mapping map[string]BN
+var mapping sync.Map
 
-// BN wrap the build number
-type BN struct {
-	id  string
-	Seq int `json:"seq"`
-	m   *sync.Mutex
+// Request wrap the build number
+type Request struct {
+	id string
+	m  *sync.Mutex
+}
+
+type Response struct {
+	Bn int `json:"bn"`
 }
 
 // IsValidUUID check if the string is UUID format
@@ -31,13 +34,13 @@ func IsValidUUID(u string) bool {
 	return err == nil
 }
 
-func getResult(bn *BN) BN {
-	bn.m.Lock()
-	defer bn.m.Unlock()
+func getResult(r *Request) Response {
+	r.m.Lock()
+	defer r.m.Unlock()
 
-	filename := fmt.Sprintf("%s/%s", folder, bn.id)
-	bn.Seq = readAndUpdate(filename)
-	return *bn
+	filename := fmt.Sprintf("%s/%s", folder, r.id)
+	res := Response{readAndUpdate(filename)}
+	return res
 }
 
 func readAndUpdate(filename string) int {
@@ -50,11 +53,11 @@ func readAndUpdate(filename string) int {
 	var line int
 	_, err = fmt.Fscanf(fd, "%d\n", &line)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		if err == io.EOF {
 			log.Println("Create new file", filename)
 		} else {
-			log.Printf("Reset content. Scan Failed %s: %v\n", filename, err)
+			log.Printf("Reset content. Scan Failed %s\n", filename)
 		}
 	}
 	fd.Seek(0, 0)
@@ -63,8 +66,8 @@ func readAndUpdate(filename string) int {
 	return line
 }
 
-// GetBN handle the request
-func GetBN(w http.ResponseWriter, r *http.Request) {
+// myHandler handle the request
+func myHandler(w http.ResponseWriter, r *http.Request) {
 	// debug concurrency
 	//time.Sleep(time.Second * 5)
 	params := mux.Vars(r)
@@ -75,19 +78,20 @@ func GetBN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bn, ok := mapping[id]
+	a, ok := mapping.Load(id)
 	if !ok {
 		//log.Println("adding new bn for id", id)
-		bn = BN{id: id, m: &sync.Mutex{}}
-		mapping[id] = bn
+		a = Request{id: id, m: &sync.Mutex{}}
+		mapping.Store(id, a)
 	}
+	req := a.(Request)
 
-	bn = getResult(&bn)
+	res := getResult(&req)
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(bn); err != nil {
-		panic(err)
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		log.Printf("Error sending response %v", err)
 	}
 }
 
@@ -112,7 +116,7 @@ func checkFolder(folder string) {
 
 	if info, err := os.Stat(folder); os.IsNotExist(err) {
 		log.Printf("Stroage folder %s doesn't exist, creating it\n", folder)
-		os.MkdirAll(folder, 0644)
+		os.MkdirAll(folder, 0777)
 	} else if !info.IsDir() {
 		panic(fmt.Sprintf(
 			"Error! Storage folder %s exist but it's a file\nPlease delete it\n",
@@ -122,8 +126,6 @@ func checkFolder(folder string) {
 
 func main() {
 	folder = os.Getenv("STORAGE_DIR")
-	mapping = make(map[string]BN)
-
 	if folder = strings.TrimSpace(folder); len(folder) == 0 {
 		folder = "data/"
 	}
@@ -132,7 +134,7 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	var handler http.Handler
-	handler = http.HandlerFunc(GetBN)
+	handler = http.HandlerFunc(myHandler)
 	handler = logger(handler)
 	router.Methods("POST").Path("/{uuid}").Handler(handler)
 	log.Fatal(http.ListenAndServe(":8080", router))
