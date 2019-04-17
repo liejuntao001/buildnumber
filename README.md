@@ -66,3 +66,19 @@ curl -i -H "Content-Type: application/json" -X POST https://example.com/buildnum
 go get github.com/tsenart/vegeta
 echo "POST https://example.com/buildnumber/e9461f1c-ef78-4162-bcb7-e83da7287614" | vegeta attack -duration=5s -rate=200 | tee results.bin | vegeta report
 ```
+
+## Deploy to kubernetes
+Modify the volumeClaimTemplates to match the cluster. The example uses rook-ceph.
+```
+kubectl apply -f buildnumber.yml
+```
+Add Ingress if necessary. The example uses traefik.
+Be sure to modify the DOMAIN part.
+```
+kubectl apply -f buildnumber-ingress.yml
+```
+
+## Test deployment
+```
+curl -i -H "Content-Type: application/json" -X POST https://buildnumber.example.com/e9461f1c-ef78-4162-bcb7-e83da7287614
+```
