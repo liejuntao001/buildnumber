@@ -61,3 +61,8 @@ docker-compose -f docker-compose-traefik.yml up -d
 curl -i -H "Content-Type: application/json" -X POST https://example.com/buildnumber/e9461f1c-ef78-4162-bcb7-e83da7287614
 ```
 
+## Stress test
+```
+go get github.com/tsenart/vegeta
+echo "POST https://example.com/buildnumber/e9461f1c-ef78-4162-bcb7-e83da7287614" | vegeta attack -duration=5s -rate=200 | tee results.bin | vegeta report
+```
