@@ -2,7 +2,7 @@ version: '3'
 
 services:
   gogs:
-    image: buildnumber
+    image: baibai/buildnumber
     container_name: buildnumber
     networks:
       - proxy
