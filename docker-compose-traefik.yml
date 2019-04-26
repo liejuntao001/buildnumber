@@ -1,22 +1,26 @@
 version: '3'
 
 services:
-  gogs:
+  buildnumber:
     image: baibai/buildnumber
     container_name: buildnumber
     networks:
       - proxy
     volumes:
-     - /data/buildnumber:/data
+     - data:/data
     environment:
      - STORAGE_DIR=/data
+     - PORT=8081
     restart: always
     labels:
       traefik.backend: "buildnumber"
       traefik.frontend.rule: $BUILDNUMBER_RULE
-      traefik.port: 8080
+      traefik.port: 8081
       traefik.enable: true
       traefik.docker.network: "proxy"
+
+volumes:
+  data:
 
 networks:
   proxy:

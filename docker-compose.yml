@@ -1,13 +1,16 @@
 version: '3'
 
 services:
-  gogs:
+  buildnumber:
     image: baibai/buildnumber
     container_name: buildnumber
     ports:
      - "127.0.0.1:8080:8080"
     volumes:
-     - /data/buildnumber:/data
+     - data:/data
     environment:
      - STORAGE_DIR=/data
     restart: always
+
+volumes:
+  data:
