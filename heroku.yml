@@ -1,6 +1,0 @@
-# https://devcenter.heroku.com/articles/heroku-yml-build-manifest
-build:
-  docker:
-    web: Dockerfile
-run:
-  web: /app/buildnumber

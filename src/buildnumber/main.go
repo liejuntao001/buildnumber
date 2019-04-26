@@ -17,6 +17,7 @@ import (
 
 var folder string
 var mapping sync.Map
+var port string
 
 // Request wrap the build number
 type Request struct {
@@ -137,5 +138,10 @@ func main() {
 	handler = http.HandlerFunc(myHandler)
 	handler = logger(handler)
 	router.Methods("POST").Path("/{uuid}").Handler(handler)
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	port = os.Getenv("PORT")
+	if port = strings.TrimSpace(port); len(port) == 0 {
+		port = "8080"
+	}
+	log.Fatal(http.ListenAndServe(":" + port, router))
 }
